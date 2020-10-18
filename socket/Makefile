@@ -1,18 +1,21 @@
-all: serverA.cpp serverB.cpp mainserver.cpp client.cpp
-				g++ -o serverA serverA.cpp
-				g++ -o serverB serverB.cpp
-				g++ -o mainserver mainserver.cpp
-				g++ -o client client.cpp
+all: serverA.cpp serverB.cpp servermain.cpp client.cpp
+		g++ -o serverA serverA.cpp
+		g++ -o serverB serverB.cpp
+		g++ -o mainserver servermain.cpp
+		g++ -o client client.cpp
 
 .PHONY: serverA
-serverA: ./serverA
-	@echo "1"
+serverA: 
+		./serverA
 
-serverB: serverB.cpp
-				./serverB
+.PHONY: serverB
+serverB: 
+		./serverB
 
-mainserver: mainserver.cpp
-				./mainserver
+.PHONY: mainserver
+mainserver: 
+		./mainserver
 
-clien: client.cpp
-		 		./client
+.PHONY: client
+client: 
+		./client
