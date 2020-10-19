@@ -19,7 +19,6 @@ using namespace std;
 #define MAXDATASIZE 100
 
 int TCP_Connect_Sock;
-int status;
 struct addrinfo hints, *res;
 
 void init_client_TCP();
@@ -43,9 +42,9 @@ void init_client_TCP() {
 	}
 }
 
-void init_mainserver_connection() {
+void connect_to_mainserver() {
 	if((connect(TCP_Connect_Sock, res->ai_addr, res->ai_addrlen)) == FAIL) {
-		perror("ERROR: Cannot connect to server");
+		perror("ERROR: Cannot connect to main server");
 		close(TCP_Connect_Sock);
 		exit(1);
 	}
@@ -81,7 +80,7 @@ void recv_server_reply(char *c1, char *c2) {
 int main() {
 
 	init_client_TCP();
-	init_mainserver_connection();
+	connect_to_mainserver();
 
 	while(true) {
 		string country_user;
