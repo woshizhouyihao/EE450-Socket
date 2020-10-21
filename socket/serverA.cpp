@@ -21,10 +21,11 @@ using namespace std;
 #define SERVER_A_UDP_PORT "30777"
 #define MAIN_SERVER_UDP_PORT "32777"
 #define FAIL -1
-#define MAXDATASIZE 100
+#define MAXDATASIZE 1024
 
 int UDP_Connect_Sock;
 struct addrinfo hints, *main_server_info, *server_A_info;
+socklen_t addr_len;
 map<string, set<string> > all_users;
 map<string, map<string, set<string> > > user_list_by_country;
 string country_data;
@@ -123,8 +124,7 @@ int main() {
 	init_UDP_Socket();
 
 	char buf[MAXDATASIZE];
-	struct addrinfo *main_server_info;
-	socklen_t addr_len = sizeof main_server_info;
+	addr_len = sizeof main_server_info;
 
 	recvfrom(UDP_Connect_Sock, buf, MAXDATASIZE, 0, main_server_info->ai_addr, &addr_len);
 	

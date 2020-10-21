@@ -21,9 +21,11 @@ using namespace std;
 #define SERVER_B_UDP_PORT "31777"
 #define MAIN_SERVER_UDP_PORT "32777"
 #define FAIL -1
+#define MAXDATASIZE 1024
 
 int UDP_Connect_Sock;
-struct addrinfo hints, *main_server_sock, *serverA_sock;
+struct addrinfo hints, *main_server_info, *server_B_info;
+socklen_t addr_len;
 map<string, set<string> > all_users;
 map<string, map<string, set<string> > > user_list_by_country;
 string country_data;
@@ -36,6 +38,8 @@ void init_UDP_Socket();
 
 void send_data(string);
 
+void recv_request();
+
 bool is_int(string s) {
 	return s.find_first_not_of( "0123456789" ) == string::npos;
 }
@@ -46,7 +50,7 @@ void read_data() {
 	string line;
 	string country = "";
 	bool ready = false;
-	country_data = "0 ";
+	country_data = "1 ";
 	while (getline(file, line)) {
 		istringstream ss(line);
 		string word;
@@ -78,11 +82,11 @@ void init_UDP_Socket() {
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
-	getaddrinfo(LOCAL_HOST, MAIN_SERVER_UDP_PORT, &hints, &main_server_sock);
+	getaddrinfo(LOCAL_HOST, MAIN_SERVER_UDP_PORT, &hints, &main_server_info);
 
-	UDP_Connect_Sock = socket(main_server_sock->ai_family, main_server_sock->ai_socktype, main_server_sock->ai_protocol);
+	UDP_Connect_Sock = socket(main_server_info->ai_family, main_server_info->ai_socktype, main_server_info->ai_protocol);
 	if(UDP_Connect_Sock == FAIL) {
-		perror("ERROR: Cannot open server B socket");
+		perror("ERROR: Cannot open server A socket");
 		close(UDP_Connect_Sock);
 		exit(1);
 	}
@@ -90,9 +94,9 @@ void init_UDP_Socket() {
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
-	getaddrinfo(LOCAL_HOST, SERVER_B_UDP_PORT, &hints, &serverA_sock);
+	getaddrinfo(LOCAL_HOST, SERVER_B_UDP_PORT, &hints, &server_B_info);
 
-	if((bind(UDP_Connect_Sock, serverA_sock->ai_addr, serverA_sock->ai_addrlen)) == FAIL) {
+	if((bind(UDP_Connect_Sock, server_B_info->ai_addr, server_B_info->ai_addrlen)) == FAIL) {
 		perror("ERROR: Fail to bind UDP socket");
 		close(UDP_Connect_Sock);
 		exit(1);
@@ -105,7 +109,7 @@ void send_data(string s) {
 	int len = s.length();
 	char country_list[len];
 	strcpy(country_list, s.c_str());
-	if((sendto(UDP_Connect_Sock, country_list, len, 0, main_server_sock->ai_addr, main_server_sock->ai_addrlen)) == FAIL) {
+	if((sendto(UDP_Connect_Sock, country_list, len, 0, main_server_info->ai_addr, main_server_info->ai_addrlen)) == FAIL) {
 		perror("ERROR: Fail to send data to main server");
 		close(UDP_Connect_Sock);
 		exit(1);
@@ -118,6 +122,12 @@ int main() {
 	
 	read_data();
 	init_UDP_Socket();
+
+	char buf[MAXDATASIZE];
+	addr_len = sizeof main_server_info;
+
+	recvfrom(UDP_Connect_Sock, buf, MAXDATASIZE, 0, main_server_info->ai_addr, &addr_len);
+	
 	send_data(country_data);
 
 	// for(map<string, map<string, set<string> > >::iterator ite = user_list_by_country.begin(); ite != user_list_by_country.end(); ite++) {
@@ -133,12 +143,12 @@ int main() {
 
 	
 	
-	// printf("The server B has received request for finding possible friends of User%s in %s\n", id, country);
+	// printf("The server A has received request for finding possible friends of User%s in %s\n", id, country);
 	// printf("User%s does not show up in %s\n", id, country);
-	// printf("The server B has sent \"User%s not found\" to Main Server\n", id);
+	// printf("The server A has sent \"User%s not found\" to Main Server\n", id);
 
-	// printf("The server B is searching possible friends for User%s ...\n");
+	// printf("The server A is searching possible friends for User%s ...\n");
 	// printf("Here are the results: User...\n");
 
-	// printf("The server B has sent the result(s) to Main Server\n");
+	// printf("The server A has sent the result(s) to Main Server\n");
 }
