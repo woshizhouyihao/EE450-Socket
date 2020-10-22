@@ -26,9 +26,9 @@ using namespace std;
 int UDP_Connect_Sock;
 struct addrinfo hints, *main_server_info, *server_A_info;
 socklen_t addr_len;
-map<string, set<string> > all_users;
 map<string, map<string, set<string> > > user_list_by_country;
 string country_data;
+char buf[MAXDATASIZE];
 
 bool is_init(string);
 
@@ -51,6 +51,7 @@ void read_data() {
 	string country = "";
 	bool ready = false;
 	country_data = "0 ";
+	map<string, set<string> > all_users;
 	while (getline(file, line)) {
 		istringstream ss(line);
 		string word;
@@ -96,7 +97,7 @@ void init_UDP_Socket() {
 	hints.ai_socktype = SOCK_DGRAM;
 	getaddrinfo(LOCAL_HOST, SERVER_A_UDP_PORT, &hints, &server_A_info);
 
-	if((bind(UDP_Connect_Sock, server_A_info->ai_addr, server_A_info->ai_addrlen)) == FAIL) {
+	if(bind(UDP_Connect_Sock, server_A_info->ai_addr, server_A_info->ai_addrlen) == FAIL) {
 		perror("ERROR: Fail to bind UDP socket");
 		close(UDP_Connect_Sock);
 		exit(1);
@@ -109,7 +110,7 @@ void send_data(string s) {
 	int len = s.length();
 	char country_list[len];
 	strcpy(country_list, s.c_str());
-	if((sendto(UDP_Connect_Sock, country_list, len, 0, main_server_info->ai_addr, main_server_info->ai_addrlen)) == FAIL) {
+	if(sendto(UDP_Connect_Sock, country_list, len, 0, main_server_info->ai_addr, main_server_info->ai_addrlen) == FAIL) {
 		perror("ERROR: Fail to send data to main server");
 		close(UDP_Connect_Sock);
 		exit(1);
@@ -118,37 +119,46 @@ void send_data(string s) {
 	printf("The server A has sent a country list to Main Server\n");
 }
 
+void recv_request() {
+	// empty buffer
+	memset(buf, 0, sizeof buf);
+	addr_len = sizeof main_server_info;
+	if(recvfrom(UDP_Connect_Sock, buf, MAXDATASIZE, 0, main_server_info->ai_addr, &addr_len) == FAIL) {
+
+	}
+}
+
 int main() {
-	
 	read_data();
 	init_UDP_Socket();
-
-	char buf[MAXDATASIZE];
-	addr_len = sizeof main_server_info;
-
-	recvfrom(UDP_Connect_Sock, buf, MAXDATASIZE, 0, main_server_info->ai_addr, &addr_len);
-	
+	recv_request();
 	send_data(country_data);
-
-	// for(map<string, map<string, set<string> > >::iterator ite = user_list_by_country.begin(); ite != user_list_by_country.end(); ite++) {
-	// 	cout << ite->first << endl;
-	// 	for(map<string, set<string> >::iterator iter = ite->second.begin(); iter != ite->second.end(); iter++) {
-	// 	  cout<<iter->first << endl;
-	// 	  for (set<string>::iterator it=iter->second.begin(); it!=iter->second.end(); ++it) {
-	//     	cout << ' ' << *it;
-	//     }
-	//     cout << endl;
-	// 	}
-	// }
-
-	
-	
-	// printf("The server A has received request for finding possible friends of User%s in %s\n", id, country);
-	// printf("User%s does not show up in %s\n", id, country);
-	// printf("The server A has sent \"User%s not found\" to Main Server\n", id);
-
-	// printf("The server A is searching possible friends for User%s ...\n");
-	// printf("Here are the results: User...\n");
-
-	// printf("The server A has sent the result(s) to Main Server\n");
+	while(true) {
+		recv_request();
+		istringstream ss(buf);
+		string country, id;
+		ss >> country;
+		ss >> id;
+		printf("The server A has received request for finding possible friends of User%s in %s\n", id.c_str(), country.c_str());
+		map<string, map<string, set<string> > >::iterator it = user_list_by_country.find(country);
+		if(it != user_list_by_country.end()) {
+			map<string, set<string> >::iterator ite = it->second.find(id);
+			if(ite != it->second.end()) {
+				printf("The server A is searching possible friends for User%s ...\n", id.c_str());
+				set<string>::iterator iter;
+				string neighbor_users = "A ";
+				for(iter = ite->second.begin(); iter != ite->second.end(); iter++) {
+					neighbor_users += (*iter + " ");
+				}
+				printf("Here are the results: %s\n", neighbor_users.c_str());
+				send_data("1 " + neighbor_users);
+				printf("The server A has sent the result(s) to Main Server\n");
+			} else {
+				printf("User%s does not show up in %s\n", id.c_str(), country.c_str());
+				send_data("0 A");
+				printf("The server A has sent \"User%s not found\" to Main Server\n", id.c_str());
+			}
+		}
+	}
+	return 0;
 }
